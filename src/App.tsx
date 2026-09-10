@@ -1,6 +1,7 @@
 import { type $brand } from "zod";
 import { useState } from "react";
 import { useListRecipes, useSingleRecipe } from "./data";
+import "./spinner.css";
 
 const PAGINATION = 20;
 
@@ -23,7 +24,12 @@ export const App = () => {
 
   return (
     <>
-      <div>{syncing ? "Syncing..." : "Idle"}</div>
+      {syncing && (
+        <div className="spinner">
+          <div className="spinner-circle"></div>
+          Syncing
+        </div>
+      )}
 
       <input
         placeholder="Search"
@@ -32,18 +38,11 @@ export const App = () => {
       />
 
       <ul>
-        {!list &&
-          new Array(PAGINATION).fill(null).map((_, index) => {
-            return <li key={index}>Loading...</li>;
-          })}
-
         {list?.map((item) => {
           if (!item) return <li>Loading...</li>;
 
           return (
             <li key={item.id}>
-              {item.source}
-
               <button
                 onClick={() => {
                   setSelected(item.id);
@@ -54,6 +53,14 @@ export const App = () => {
             </li>
           );
         })}
+
+        {syncing &&
+          PAGINATION - (list?.length ?? 0) > 0 &&
+          new Array(PAGINATION - (list?.length ?? 0))
+            .fill(null)
+            .map((_, index) => {
+              return <li key={index}>░░░░░░░░░░░░░░░░░░░░░░░</li>;
+            })}
       </ul>
 
       <dialog
@@ -65,13 +72,15 @@ export const App = () => {
 
         <div style={{ display: "flex" }}>
           <div>
-            <img
-              src={viewing?.image}
-              alt={viewing?.title}
-              width={300}
-              height={300}
-              style={{ objectFit: "contain" }}
-            />
+            {viewing?.image && (
+              <img
+                src={viewing?.image}
+                alt={viewing?.title}
+                width={300}
+                height={300}
+                style={{ objectFit: "contain" }}
+              />
+            )}
 
             <dl>
               <div>

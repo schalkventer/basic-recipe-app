@@ -7,7 +7,7 @@ const schemas = {
       source_url: z.string(),
       domain: z.string(),
       title: z.string(),
-      image_url: z.string(),
+      image_url: z.string().nullable(),
       author: z.string().nullable(),
       yields: z.string().nullable(),
       prep_time: z.number().nullable(),
@@ -23,23 +23,27 @@ const schemas = {
       extracted_at: z.string(),
       last_checked: z.string(),
 
-      reduction: z.object({
-        original_words: z.number(),
-        recipe_words: z.number(),
-        words_removed: z.number(),
-        bloat_percent: z.number(),
-        ads_detected: z.number(),
-      }),
+      reduction: z
+        .object({
+          original_words: z.number(),
+          recipe_words: z.number(),
+          words_removed: z.number(),
+          bloat_percent: z.number(),
+          ads_detected: z.number(),
+        })
+        ?.optional(),
 
-      nutrition: z.object({
-        calories: z.number().nullable(),
-        protein_g: z.number().nullable(),
-        fat_g: z.number().nullable(),
-        carbs_g: z.number().nullable(),
-        fiber_g: z.number().nullable(),
-        sodium_mg: z.number().nullable(),
-        source: z.string(),
-      }),
+      nutrition: z
+        .object({
+          calories: z.number().nullable(),
+          protein_g: z.number().nullable(),
+          fat_g: z.number().nullable(),
+          carbs_g: z.number().nullable(),
+          fiber_g: z.number().nullable(),
+          sodium_mg: z.number().nullable(),
+          source: z.string(),
+        })
+        .optional(),
     }),
   },
 
@@ -56,7 +60,7 @@ const schemas = {
           cook_time: z.number().nullable(),
           cuisine: z.string().nullable(),
           domain: z.string(),
-          image_url: z.string(),
+          image_url: z.string().nullable(),
           tags: z.array(z.string()),
           title: z.string(),
           total_time: z.number().nullable(),
@@ -69,6 +73,7 @@ const schemas = {
       q: z.string().optional(),
       offset: z.number().optional(),
       cursor: z.string().optional(),
+      cuisine: z.string().optional(),
       mode: z.enum(["keyword", "semantic", "hybrid"]),
       limit: z.number(),
       max_time: z.number().optional(),
@@ -120,10 +125,56 @@ export const getList = async (props: {
   return schemas.list.response.parse(result);
 };
 
-export const getBookmarked = (): string[] => {
-  return JSON.parse(localStorage.getItem("bookmarked") || "[]");
+export const recursiveFetchByCuisine = async (props: {
+  pages: number;
+  cuisine: "italian";
+  onNewPageLoad: (recipes: SingleRecipeResponse[]) => void;
+}): Promise<void> => {
+  const { pages, cuisine, onNewPageLoad } = props;
+
+  const callNextPage = async (
+    cursor: string | boolean,
+    count: number,
+  ): Promise<void> => {
+    if (count >= pages || cursor === false) return;
+
+    const response = await getList({
+      params: {
+        limit: 24,
+        cuisine,
+        cursor: cursor === true ? undefined : cursor,
+        mode: "keyword",
+      },
+    });
+
+    const inner = response.items.map((item) => getSingle({ id: item.id }));
+    const result = await Promise.all(inner);
+
+    onNewPageLoad(result);
+    await callNextPage(response.next_cursor ?? false, count + 1);
+  };
+
+  await callNextPage(true, 0);
 };
 
-export const setBookmarked = (values: string[]) => {
-  localStorage.setItem("bookmarked", JSON.stringify(values));
+export const createLocal = <T extends object>(props: {
+  key: string;
+  fallback: T;
+}) => {
+  const { key, fallback } = props;
+
+  const get = (): T => {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return fallback;
+    return JSON.parse(raw) as T;
+  };
+
+  const set = (value: T) => {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  };
+
+  return {
+    get,
+    set,
+  };
 };

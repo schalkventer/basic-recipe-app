@@ -2,6 +2,7 @@ import { type $brand } from "zod";
 import { createAsyncStoragePersister } from "@tanstack/query-async-storage-persister";
 import { createCollection } from "@tanstack/react-db";
 import { QueryClient } from "@tanstack/react-query";
+import { createLocal } from "./data.api";
 
 import {
   BrowserCollectionCoordinator,
@@ -35,7 +36,7 @@ export type Recipe = {
   id: string & $brand<"RECIPE_ID">;
   category: string | null;
   title: string;
-  image: string;
+  image: string | null;
   author: string | null;
   ingredients: null | string[];
   instructions: null | string[];

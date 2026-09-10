@@ -13,18 +13,19 @@ const transformer = (
   x: SingleRecipeResponse | ListRecipeResponse["items"][number],
 ): Recipe => {
   const current = collection.get(x.id);
+  const full = "ingredients" in x ? x : null;
 
   return {
     id: x.id,
-    author: current?.author ?? null,
+    author: full?.author ?? current?.author ?? null,
     category: x.category,
     title: x.title,
     image: x.image_url,
-    ingredients: current?.ingredients ?? null,
-    instructions: current?.instructions ?? null,
+    ingredients: full?.ingredients ?? current?.ingredients ?? null,
+    instructions: full?.instructions ?? current?.instructions ?? null,
     times: {
       cook: x.cook_time ?? current?.times?.cook ?? null,
-      prep: current?.times?.prep ?? null,
+      prep: full?.prep_time ?? current?.times?.prep ?? null,
       total: x.total_time ?? current?.times?.total ?? null,
     },
   };
@@ -132,7 +133,10 @@ export const useListRecipes = (props: {
       tx.mutate(() => {
         for (const single of items) {
           const current = collection.has(single.id);
-          if (!current) return collection.insert(single);
+          if (!current) {
+            collection.insert(single);
+            continue;
+          }
 
           collection.update(single.id, (x) => {
             x.author = single.author;
